@@ -28,13 +28,14 @@ MK_AUTO_OBJ = yes
 .include "./BSD/share/mk/bsd.linker.mk"
 .include "./BSD/share/mk/bsd.compiler.mk"
 
-_ROOT_BINARY_DIR = ${ROOT_SOURCE_DIR}/../build
-ROOT_BINARY_DIR = ${_ROOT_BINARY_DIR:tA}
-SRCTOP = ${ROOT_SOURCE_DIR}
-OBJTOP = ${ROOT_BINARY_DIR}
-SRCROOT = ${ROOT_SOURCE_DIR}
-OBJROOT = ${ROOT_BINARY_DIR}
-MAKEOBJDIRPREFIX = ${ROOT_BINARY_DIR}
+_ROOT_BINARY_DIR ?= ${ROOT_SOURCE_DIR}/../build
+ROOT_BINARY_DIR ?= ${_ROOT_BINARY_DIR:tA}
+SRCTOP ?= ${ROOT_SOURCE_DIR}
+OBJTOP ?= ${ROOT_BINARY_DIR}
+SRCROOT ?= ${ROOT_SOURCE_DIR}
+OBJROOT ?= ${ROOT_BINARY_DIR}
+MAKEOBJDIRPREFIX ?= ${ROOT_BINARY_DIR}
+.export ROOT_BINARY_DIR MAKEOBJDIRPREFIX SRCTOP OBJTOP SRCROOT OBJROOT
 
 # ------------------------------------------------------------------------
 #  Top level targets
@@ -54,10 +55,12 @@ HOST_CC = ${CC}
 HOST_CXX = ${CXX}
 HOST_AR = ${AR}
 .else
-HOST_CC ?= /usr/bin/cc
-HOST_CXX ?= /usr/bin/c++
-HOST_AR ?= /usr/bin/ar
+HOST_CC ?= clang
+HOST_CXX ?= clang++
+HOST_AR ?= llvm-ar
+NO_ROOT ?= yes
 .endif
+.export HOST_CC HOST_CXX HOST_AR NO_ROOT
 
 # If we have a toolchain bundle, default to not building it again
 # TOOLCHAIN is initially set to /Library/Developer/... by sys.mk

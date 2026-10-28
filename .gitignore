@@ -4,3 +4,13 @@ ravynOS.xcodeproj
 /build
 .DS_Store
 /.vscode
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile.cmake
+*.log
+dist/
+version.txt
+*.pico
+.depend.*
+
