@@ -28,7 +28,7 @@ RESOURCES=	${.CURDIR}/Icon.png \
 MK_WERROR=	no
 MK_PIE=		no
 WARNS=	        1
-SYSROOT=        --sysroot=${RAVYN_SDKROOT} -B${TOOLS}
+SYSROOT?=       ${RAVYN_SDKROOT}
 CFLAGS+=	-fobjc-arc -g -D__WSRPC -pthread \
 		-I${.CURDIR} -I${.OBJDIR} -I${.CURDIR}/libinput/src \
 		-I${.CURDIR}/libinput/include -I${ROOT_SOURCE_DIR}/Frameworks \
@@ -36,9 +36,9 @@ CFLAGS+=	-fobjc-arc -g -D__WSRPC -pthread \
 		-I${ROOT_SOURCE_DIR}/Frameworks/Foundation/Headers \
 		-I${ROOT_SOURCE_DIR}/Frameworks/AppKit/Headers
 
-LDFLAGS+=	-L${.OBJDIR} \
-		-lAppKit -lFoundation -lCoreGraphics -lcrypt -llaunch \
-		-lCoreFoundation -lOnyx2D -lxml2 -pthread -lobjc -lSystem -lkvm -lm \
+LDFLAGS+=	-L${.OBJDIR} -F${RAVYN_SDKROOT}/System/Library/Frameworks \
+		-framework Foundation -framework CoreFoundation -framework Onyx2D \
+		-lobjc -lSystem \
 		
 #.export SYSROOT
 

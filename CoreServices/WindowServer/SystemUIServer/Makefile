@@ -37,15 +37,15 @@ CFLAGS+=	-g -fobjc-arc ${OBJCFLAGS} -D__DARWINOS__ -D__MACH__ \
 		-I${OBJTOP}/Frameworks/AppKit \
 		-I${OBJTOP}/Frameworks/Onyx2D/Onyx2D.framework/Headers \
 		-DRELEASE_LOGO="@\"${RELEASE_LOGO}\""
-LDFLAGS+=	-Wl,-R'$$ORIGIN/../Resources' -L${OBJTOP}/tmp/usr/lib \
+LDFLAGS+=	-Wl,-rpath,@executable_path/../Resources -L${OBJTOP}/tmp/usr/lib \
 		-L${OBJTOP}/Frameworks/Foundation/Foundation.framework \
 		-L${OBJTOP}/Frameworks/CoreGraphics/CoreGraphics.framework \
 		-L${OBJTOP}/Frameworks/AppKit/AppKit.framework \
 		-L${OBJTOP}/Frameworks/LaunchServices/LaunchServices.framework \
-		-Wl,-R/System/Library/Frameworks/Foundation.framework/Versions/A \
-		-Wl,-R/System/Library/Frameworks/AppKit.framework/Versions/A \
-		-Wl,-R/System/Library/Frameworks/CoreGraphics.framework/Versions/A \
-		-Wl,-R/System/Library/Frameworks/LaunchServices.framework/Versions/A \
+		-Wl,-rpath,/System/Library/Frameworks/Foundation.framework/Versions/A \
+		-Wl,-rpath,/System/Library/Frameworks/AppKit.framework/Versions/A \
+		-Wl,-rpath,/System/Library/Frameworks/CoreGraphics.framework/Versions/A \
+		-Wl,-rpath,/System/Library/Frameworks/LaunchServices.framework/Versions/A \
                 -lAppKit -lCoreGraphics -lLaunchServices -lFoundation -lobjc -lSystem -lm
 
 # Need this to find gl.h before toolchain supports -framework
@@ -61,8 +61,8 @@ ${.CURDIR}/kickSession: kickSession.m
 		-I${OBJTOP}/Frameworks/Foundation/Headers \
 		-L${OBJTOP}/Frameworks/AppKit/AppKit.framework \
 		-L${OBJTOP}/Frameworks/Foundation/Foundation.framework \
-		-Wl,-R/System/Library/Frameworks/AppKit.framework/Versions/A \
-		-Wl,-R/System/Library/Frameworks/Foundation.framework/Versions/A \
+		-Wl,-rpath,/System/Library/Frameworks/AppKit.framework/Versions/A \
+		-Wl,-rpath,/System/Library/Frameworks/Foundation.framework/Versions/A \
 		-lAppKit -lFoundation -lSystem -lobjc
 
 .include <rvn.app.mk>

@@ -39,8 +39,10 @@
 #include <stdio.h>
 #include <limits.h>
 #include <signal.h>
+#if !defined(__APPLE__) && !defined(__MACH__)
 #include <sys/consio.h>
 #include <sys/fbio.h>
+#endif
 
 #import "WSDisplay.h"
 

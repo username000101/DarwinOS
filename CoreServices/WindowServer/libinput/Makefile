@@ -73,15 +73,14 @@ CFLAGS+=        -DLIBINPUT_QUIRKS_DIR=\"/System/Library/CoreServices/WindowServe
 CFLAGS+=        -DLIBINPUT_QUIRKS_OVERRIDE_FILE=\"/System/Library/CoreServices/WindowServer.app/Contents/Resources/local-overrides.quirks\"
 CFLAGS+=	-DLIBINPUT_TOOL_PATH=\"/System/Library/CoreServices/WindowServer.app/Contents/Resources\"
 CFLAGS+=        -DLIBINPUT_QUIRKS_SRCDIR=\"${.CURDIR}/quirks\" -D_GNU_SOURCE=1 -DHAVE_LOCALE_H
-CFLAGS+=        -DHAVE_VERSIONSORT -DMESON_BUILD_ROOT=\"\" -DPTRACE_ATTACH=PT_ATTACH -DHAVE_XLOCALE_H
+CFLAGS+=        -DMESON_BUILD_ROOT=\"\" -DPTRACE_ATTACH=PT_ATTACH -DHAVE_XLOCALE_H
 CFLAGS+=	-DPTRACE_CONT=PT_CONTINUE -DPTRACE_DETACH=PT_DETACH -DHAVE_INSTALLED_TESTS=0
 CFLAGS+=	-Dprogram_invocation_short_name=\"getprogname\(\)\" -fvisibility=hidden
 CFLAGS+=	-DHAVE_LIBEVDEV_DISABLE_PROPERTY -DHAVE_LIBWACOM=0 -DHAVE_DEBUG_GUI=0 -fPIC
-LDFLAGS+=	-L${OBJTOP}/CoreServices/WindowServer/mtdev -lmtdev
-LDFLAGS+=	-L${OBJTOP}/CoreServices/WindowServer/libevdev -levdev
-LDFLAGS+=	-L${OBJTOP}/tmp/usr/lib -lepoll-shim -ludev
-LDFLAGS+=	-L${MAKEOBJDIR} -linput-util -lquirks -lfilter -lm -lrt
-LDFLAGS+=	-Wl,-R'$$ORIGIN/../Resources' -Wl,--version-script=${.CURDIR}/src/libinput.sym
+LDFLAGS+=	-L${.CURDIR}/../mtdev -lmtdev
+LDFLAGS+=	-L${.CURDIR}/../libevdev -levdev
+LDFLAGS+=	-L${MAKEOBJDIR} -linput-util -lquirks -lfilter
+LDFLAGS+=	-Wl,-rpath,@loader_path/../Resources
 
 GIT_SHA!=	cd ${.CURDIR}; git log -1 --pretty=format:%h
 
@@ -96,7 +95,7 @@ libinput-git-version.h:
 	sed -e 's/@VCS_TAG@/${GIT_SHA}/' \
 	${.CURDIR}/src/libinput-git-version.h.in > libinput-git-version.h
 
-TOOLS=  tools/libinput-debug-events \
+LIBINPUT_TOOLS=  tools/libinput-debug-events \
 	tools/libinput-debug-tablet \
 	tools/libinput-quirks \
 	tools/libinput-list-devices \
@@ -106,22 +105,20 @@ TOOLS=  tools/libinput-debug-events \
 	tools/ptraccel-debug \
 	tools/libinput
 
-TOOL_CFLAGS= ${CFLAGS:S/-fvisibility=hidden//}
-TOOL_LDFLAGS= -Ltools -ltools -L. -linput \
-		-L../libevdev -levdev -Wl,-R'$$ORIGIN' \
-		-L${OBJTOP}/tmp/usr/lib -lepoll-shim -ludev \
-		-L../mtdev -lmtdev -ldevinfo -lthr -lm
+TOOL_CFLAGS= ${CFLAGS:S/-fvisibility=hidden//:S/-g//} -g0
+TOOL_LDFLAGS= ${LDFLAGS:S/-g//} -g0 -Ltools -ltools -L. -linput \
+		-L../libevdev -levdev -Wl,-rpath,@loader_path \
+		-L../mtdev -lmtdev
 
-tools: tools/libtools.so ${TOOLS}
+tools: tools/libtools.so ${LIBINPUT_TOOLS}
 tools/libtools.so: tools/shared.c
 	mkdir -p ${MAKEOBJDIR}/tools
 	touch ${MAKEOBJDIR}/config.h
 	${CC} ${TOOL_CFLAGS} -c ${.CURDIR}/tools/shared.c -o tools/shared.o
-	${CC} -shared -Wl,-soname=libtools.so -o tools/libtools.so \
-		tools/shared.o -L. -linput -Wl,-R'$$ORIGIN' \
+	${CC} -dynamiclib ${LDFLAGS} -Wl,-install_name,libtools.so -o tools/libtools.so \
+		tools/shared.o -L. -linput -Wl,-rpath,@loader_path \
 		-L../libevdev -levdev \
-		-L../mtdev -lmtdev -L${OBJTOP}/tmp/usr/lib -lepoll-shim -ludev \
-		-ldevinfo -lthr -lm -lrt
+		-L../mtdev -lmtdev
 
 tools/libinput-debug-events: tools/libinput-debug-events.c
 	${CC} ${TOOL_CFLAGS} -o $@ ${.ALLSRC} ${TOOL_LDFLAGS}
@@ -163,7 +160,7 @@ PYTHON_TOOLS= tools/libinput-analyze-per-slot-delta.py \
 	      tools/libinput-replay.py
 
 tools-install:
-.for tool in ${TOOLS} tools/libtools.so
+.for tool in ${LIBINPUT_TOOLS} tools/libtools.so
 	cp -fv ${tool} ${APP_DIR}/Contents/Resources/
 	chmod 0755 ${APP_DIR}/Contents/Resources/${tool:T}
 .endfor

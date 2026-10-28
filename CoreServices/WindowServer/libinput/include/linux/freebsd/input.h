@@ -11,9 +11,15 @@
 
 
 #ifndef __KERNEL__
+#include <stdint.h>
 #include <sys/time.h>
 #include <sys/ioccom.h>
+#include <sys/ioctl.h>
 #include <sys/types.h>
+#endif
+
+#ifndef _IOWINT
+#define _IOWINT(g, n) _IOW((g), (n), int)
 #endif
 
 #include "input-event-codes.h"
