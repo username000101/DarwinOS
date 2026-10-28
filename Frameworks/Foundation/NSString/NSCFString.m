@@ -128,29 +128,30 @@ NSUInteger NSGetCFStringWithMaxLength(const unichar *characters,
     uint8_t infobits = self->cfinfo[CF_INFO_BITS];
 
     if (infobits & kNSCFHasLength) {
-        return (self->variants.inline1.length & 0xff);
+        return self->variants.inline1.length;
     } else if (infobits & kNSCFHasNull) {
         if (infobits & kNSCFUnichar) {
-            uint16_t *ch = self->variants.notInlineImmutable1.bytes;
+            uint16_t *ch = (uint16_t *)self->variants.notInlineImmutable1.bytes;
+            if (!ch) return 0;
             NSUInteger len = 0;
             while (*ch++)
                 len++;
             return len;
         } else {
-            uint8_t *ch = self->variants.notInlineImmutable1.bytes;
+            uint8_t *ch = (uint8_t *)self->variants.notInlineImmutable1.bytes;
+            if (!ch) return 0;
             NSUInteger len = 0;
             while (*ch++)
                 len++;
             return len;
         }
     }
-    return (self->variants.notInlineImmutable1.length & 0xff);
+    return self->variants.notInlineImmutable1.length;
 }
 
 -(unichar)characterAtIndex:(NSUInteger)location {
     if (location >= [self length]) {
-        NSRaiseException(NSRangeException, self, _cmd, 
-            @"index %d beyond length %d", location,[self length]);
+        return 0;
     }
     unichar buffer[1];
     [self getCharacters:buffer range:NSMakeRange(location, 1)];
@@ -214,9 +215,9 @@ NSUInteger NSGetCFStringWithMaxLength(const unichar *characters,
         return;
 
     if (NSMaxRange(range) > [self length]) {
-        NSRaiseException(NSRangeException, self, _cmd,
-            @"range %@ beyond length %d",
-            NSStringFromRange(range), [self length]);
+        if (loc >= (NSInteger)[self length])
+            return;
+        len = [self length] - loc;
     }
 
     uint8_t infobits = self->cfinfo[CF_INFO_BITS];

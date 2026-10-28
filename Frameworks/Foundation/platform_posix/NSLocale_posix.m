@@ -47,13 +47,13 @@ BOOL NSCurrentLocaleIsMetric(NSString *locale){
         UTF8String]) != NULL) {
 
         struct lconv *conv = localeconv();
-        [desc setObject:[NSString stringWithUTF8String:conv->decimal_point]
+        [desc setObject:[NSString stringWithUTF8String:conv->decimal_point ? conv->decimal_point : "."]
             forKey:NSLocaleDecimalSeparator];
-        [desc setObject:[NSString stringWithUTF8String:conv->thousands_sep]
+        [desc setObject:[NSString stringWithUTF8String:conv->thousands_sep ? conv->thousands_sep : ","]
             forKey:NSLocaleGroupingSeparator];
-        [desc setObject:[NSString stringWithUTF8String:conv->currency_symbol]
+        [desc setObject:[NSString stringWithUTF8String:conv->currency_symbol ? conv->currency_symbol : "$"]
             forKey:NSLocaleCurrencySymbol];
-        [desc setObject:[NSString stringWithUTF8String:conv->int_curr_symbol]
+        [desc setObject:[NSString stringWithUTF8String:conv->int_curr_symbol ? conv->int_curr_symbol : "USD"]
             forKey:NSLocaleCurrencyCode];
         [desc setObject:[NSNumber numberWithBool:NSCurrentLocaleIsMetric(identifier)]
             forKey:NSLocaleUsesMetricSystem];

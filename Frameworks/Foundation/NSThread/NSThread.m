@@ -298,6 +298,10 @@ static void *nsThreadStartThread(void* t)
 }
 
 static inline id _NSThreadSharedInstance(NSThread *thread,NSString *className,BOOL create) {
+   if (!thread || ![thread isKindOfClass:[NSThread class]]) {
+      NSLog(@"_NSThreadSharedInstance: invalid thread %p (class=%@) for className=%@", thread, [thread className], className);
+      return nil;
+   }
    NSMutableDictionary *shared=thread->_sharedObjects;
    if(!shared)
       return nil;
@@ -312,7 +316,7 @@ static inline id _NSThreadSharedInstance(NSThread *thread,NSString *className,BO
       [thread->_sharedObjectLock lock];
       [shared setObject:result forKey:className];
       [thread->_sharedObjectLock unlock];
-      [result release];
+      // Keep result retained as a thread-shared singleton: do not release.
    }
 
    return result;

@@ -119,8 +119,6 @@ static struct passwd *pwent = NULL;
     extern const char *const *NSProcessInfoArgv;
     NSMutableArray *result=[NSMutableArray array];
     int             i;
-
-printf("posix arguments - %d args\n", NSProcessInfoArgc);
     for(i=0;i<NSProcessInfoArgc;i++) {
         NSString *s = [NSString stringWithCString:NSProcessInfoArgv[i]]; 
         [result addObject:s];
@@ -234,7 +232,7 @@ NSUInteger NSPlatformThreadID() {
     return [NSString stringWithCString:remoteHost->h_name];
 }
 
-#ifndef __DARWINOS__
+#if !defined(__DARWINOS__) && !defined(DARWIN) && !defined(__APPLE__)
 void NSPlatformLogString(NSString *string) {
     fprintf(stderr, "%s\n", [string UTF8String]);
 }

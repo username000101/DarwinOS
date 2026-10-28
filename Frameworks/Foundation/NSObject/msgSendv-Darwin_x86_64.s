@@ -1,105 +1,114 @@
+/*
+ * NSobjc_msgSendv for Darwin x86_64
+ * Copyright (c) 2026 antonov. All rights reserved.
+ */
 
                 .globl  _NSobjc_msgSendv
                 .text
+                .p2align 4
 _NSobjc_msgSendv:
-                pushq	%rbp
-                movq	%rsp, %rbp
-                subq    $32, %rsp
-                movq    %rdi, (%rbp)            // id target
-                movq    %rsi, -8(%rbp)          // SEL selector
-                movq    %rdx, -16(%rbp)         // arg frame size
-                movq    %rcx, -24(%rbp)         // arg frame pointer
+                pushq   %rbp
+                movq    %rsp, %rbp
+                pushq   %r12
+                pushq   %r13
+                pushq   %r14
+                pushq   %r15
+                pushq   %rbx
+                subq    $24, %rsp
 
-// IMP lookUpImpOrForward(struct objc_object, struct objc_selector,
-//      struct objc_class, int flags)
+                # Arguments:
+                # %rdi = id target
+                # %rsi = SEL selector
+                # %rdx = size_t argFrameSize
+                # %rcx = const void *argFrame
 
-                movq    (%rbp), %rdi            // target
-                movq    -8(%rbp), %rsi          // sel
-                movq    (%rdi), %rdx            // isa, objc_class
-                movq    $11, %rcx               // LOOKUP_{INIT|RESOLVER|NIL}
-                call	_lookUpImpOrForward
+                movq    %rdi, -48(%rbp)
+                movq    %rsi, -56(%rbp)
+                movq    %rdx, %r14              # r14 = argFrameSize
+                movq    %rcx, %r15              # r15 = argFrame
 
-// on return, rax contains the IMP to call. return early if it's nil.
-// otherwise, keep it there for the call
+                # Lookup IMP: class_getMethodImplementation(object_getClass(target), selector)
+                call    _object_getClass
+                movq    %rax, %rdi
+                movq    -56(%rbp), %rsi
+                call    _class_getMethodImplementation
+                movq    %rax, %r12              # r12 = IMP
 
-                cmpq    $0, %rax                // check if imp lookup was nil
-                jz      Lmarshal
-                jmp     Lexit
+                testq   %r12, %r12
+                jz      Ldone
 
-// object & selector are still in rdi, rsi but we're going to trash them
-// and use the values from the argument frame.
-// marshal the arg frame into registers for the call.
-// if there are more than 6 args, the excess are put on the stack.
+                # Default rdi and rsi to target and selector
+                movq    -48(%rbp), %rdi
+                movq    -56(%rbp), %rsi
+                xorq    %rdx, %rdx
+                xorq    %rcx, %rcx
+                xorq    %r8, %r8
+                xorq    %r9, %r9
 
-Lmarshal:       movq    -16(%rbp), %r10         // arg frame size
-                movq    -24(%rbp), %r11         // arg frame ptr
-                movq    %r11, %r12
-                addq    %r10, %r12              // ptr + size = end of frame
+                testq   %r15, %r15
+                jz      Ldo_call
 
-                movq    (%r10), %rdi
-                addq    $8, %r10
-                cmpq    %r10, %r12
-                jle     Lcall
+                # arg0 (self)
+                cmpq    $8, %r14
+                jb      Ldo_call
+                movq    0(%r15), %rdi
 
-                movq    (%r10), %rsi
-                addq    $8, %r10
-                cmpq    %r10, %r12
-                jle     Lcall
+                # arg1 (selector)
+                cmpq    $16, %r14
+                jb      Ldo_call
+                movq    8(%r15), %rsi
 
-                movq    (%r10), %rdx
-                addq    $8, %r10
-                cmpq    %r10, %r12
-                jle     Lcall
+                # arg2
+                cmpq    $24, %r14
+                jb      Ldo_call
+                movq    16(%r15), %rdx
 
-                movq    (%r10), %rcx
-                addq    $8, %r10
-                cmpq    %r10, %r12
-                jle     Lcall
+                # arg3
+                cmpq    $32, %r14
+                jb      Ldo_call
+                movq    24(%r15), %rcx
 
-                movq    (%r10), %r8
-                addq    $8, %r10
-                cmpq    %r10, %r12
-                jle     Lcall
+                # arg4
+                cmpq    $40, %r14
+                jb      Ldo_call
+                movq    32(%r15), %r8
 
-                movq    (%r10), %r9
-                addq    $8, %r10
-                cmpq    %r10, %r12
-                jle     Lcall
+                # arg5
+                cmpq    $48, %r14
+                jb      Ldo_call
+                movq    40(%r15), %r9
 
-                subq    %r10, %r12              // end of frame - ptr == 0?
-                cmpq    $0, %r12
-                jz      Lcall
+                # If more than 6 arguments (argFrameSize > 48):
+                cmpq    $48, %r14
+                jbe     Ldo_call
 
-                subq    %r12, %rsp              // nope, reserve space to push
-L0:             pushq   (%r10)                  // seventh and beyond
-                addq    $8, %r10
-                cmpq    %r10, %r12
-                jl      L0
+                # Stack arguments: argFrame[6..] in reverse order
+                movq    %r14, %rbx
+                andq    $~7, %rbx               # round down to multiple of 8
+                # Ensure 16-byte stack alignment
+                movq    %rbx, %rax
+                subq    $48, %rax               # bytes to push on stack
+                testq   $8, %rax
+                jz      Lpush_args
+                pushq   $0                      # alignment padding
 
-Lcall:          
-                pushq   %rax
-                pushq   %rdi
-                leaq    msg3(%rip), %rdi
-                call    _printf
-                popq    %rdi
-                popq    %rax
+Lpush_args:
+                subq    $8, %rbx
+                cmpq    $48, %rbx
+                jb      Ldo_call
+                pushq   (%r15, %rbx)
+                jmp     Lpush_args
 
-                pushq   %rax
-                pushq   %rdi
-                leaq    msg1(%rip), %rdi
-                call    _printf
-                popq    %rdi
-                popq    %rax
+Ldo_call:
+                xorl    %eax, %eax              # no vector registers for varargs
+                call    *%r12
 
-                call    *%rax                   // all good - call the IMP!
-
-Lexit:          addq    $32, %rsp
-                addq    %r12, %rsp
+Ldone:
+                leaq    -40(%rbp), %rsp
+                popq    %rbx
+                popq    %r15
+                popq    %r14
+                popq    %r13
+                popq    %r12
                 popq    %rbp
                 ret
-
-                .data
-format1:        .asciz  "[%s %s] size %lx frame %lx\n"
-msg1:           .asciz  "rsi %lx rdx %lx rcx %lx r8 %lx r9 %lx\n"
-msg2:           .asciz  "pushing args 7+\n"
-msg3:           .asciz  "making call\n"

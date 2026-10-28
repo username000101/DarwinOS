@@ -131,12 +131,17 @@ void NSPlatformSetCurrentThread(NSThread *thread) {
 NSThread *NSPlatformCurrentThread() {
 	NSThread *thread=pthread_getspecific(_NSThreadInstanceKey());
 	
-	if(!thread)
+	if(!thread || ![thread isKindOfClass:[NSThread class]])
 	{
+        if (thread && ![thread isKindOfClass:[NSThread class]]) {
+            NSLog(@"NSPlatformCurrentThread: TSD key %d returned invalid object %p (class=%@), re-creating!",
+                  _NSThreadInstanceKey(), thread, [thread className]);
+            thread = nil;
+        }
 		// maybe NSThread is not +initialize'd
 		[NSThread class];
 		thread=pthread_getspecific(_NSThreadInstanceKey());
-        if(!thread) {
+        if(!thread || ![thread isKindOfClass:[NSThread class]]) {
             thread = [NSThread alloc];
             if(thread) {
                 NSPlatformSetCurrentThread(thread);

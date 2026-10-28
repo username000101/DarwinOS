@@ -356,14 +356,15 @@ CFLAGS.${file}.o = -I${.CURDIR}/NSString
 CFLAGS.NSAutoreleasePool.o = -I${ROOT_SOURCE_DIR}/Libraries/objc4
 CFLAGS.forwarding.o = -I${ROOT_SOURCE_DIR}/Libraries/objc4 \
 	-I${RAVYN_SDKROOT}${SLF}/System.framework/Versions/B/PrivateHeaders \
-	-I/nest/darwinos/Libraries/Libsystem/private \
+	-I${ROOT_SOURCE_DIR}/Libraries/Libsystem/private \
         -include${.CURDIR:H}/CoreFoundation/ForFoundationOnly.h
 SUBDIR =
 
 fmwk-install-hook:
-.for dir in ${RAVYN_SDKROOT}/System/Library/Frameworks/ ${SYSROOT_DIR}/System/Library/Frameworks/
+.for dir in ${RAVYN_SDKROOT}/System/Library/Frameworks ${SYSROOT_DIR}/System/Library/Frameworks
 	mkdir -p ${dir}
-	cp -Rf ${.OBJDIR}/${FRAMEWORK}.framework ${dir}
+	rm -rf ${dir}/${FRAMEWORK}.framework
+	cp -Rf ${.OBJDIR}/${FRAMEWORK}.framework ${dir}/
 .endfor
 
 .include <rvn.framework.mk>

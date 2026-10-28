@@ -155,10 +155,10 @@ const char * const *NSProcessInfoArgv=NULL;
 -(NSString *)processName {
    if(_processName==nil){
     NSArray *arguments=[self arguments];
-
-    if([arguments count]>0)
-     _processName=[[[[[self arguments] objectAtIndex:0]
-       lastPathComponent] stringByDeletingPathExtension] retain];
+    if([arguments count]>0){
+     id arg0 = [arguments objectAtIndex:0];
+     _processName=[[[arg0 lastPathComponent] stringByDeletingPathExtension] retain];
+    }
 
     if(_processName==nil){
      _processName=@"";
@@ -178,9 +178,8 @@ const char * const *NSProcessInfoArgv=NULL;
 }
 
 -(NSArray *)arguments {
-   Class cls = objc_lookUpClass("NSPlatform_posix");
    if(_arguments==nil){
-    _arguments=[[cls arguments] retain];
+    _arguments=[[[NSPlatform currentPlatform] arguments] retain];
    }
 
    return _arguments;

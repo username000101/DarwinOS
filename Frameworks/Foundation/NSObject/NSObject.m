@@ -94,9 +94,6 @@ BOOL NSObjectIsKindOfClass(id object,Class kindOf) {
 		    signatureWithObjCTypes:method_getTypeEncoding(m)];
 	}
 
-	[NSException raise:NSInvalidArgumentException 
-		format:@"Class %s: no such selector: %s", 
-		class_getName(self), sel_getName(sel)];
 	return nil;
 }
 
@@ -112,9 +109,6 @@ BOOL NSObjectIsKindOfClass(id object,Class kindOf) {
 		    signatureWithObjCTypes:method_getTypeEncoding(m)];
 	}
 
-	[NSException raise:NSInvalidArgumentException 
-		format:@"Class %s: no such selector: %s", 
-		class_getName(cls), sel_getName(sel)];
 	return nil;
 }
 
@@ -177,10 +171,7 @@ extern id NSObjCForward_stret(id self, SEL _cmd, ...);
 }
 
 -(void)forwardInvocation:(NSInvocation *)invocation {
-    id target = [invocation target];
-    SEL sel = [invocation selector];
-    printf("target %p %s sel %p %s\n", target, object_getClassName(target), sel, sel_getName(sel));
-    [invocation invoke];
+    [self doesNotRecognizeSelector:[invocation selector]];
 }
 
 -(id)forwardSelector:(SEL)selector arguments:(void *)arguments {
