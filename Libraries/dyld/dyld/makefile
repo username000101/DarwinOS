@@ -35,7 +35,8 @@ SRCS = src/dyldStartup.s \
 	dyld3/PathOverrides.cpp \
 	src/mh_dylib_header_alias.s \
 	src/missing_symbol_stubs.c \
-	src/cc_stubs.c
+	src/cc_stubs.c \
+	src/cxx_stubs.cpp
 OBJS = ${SRCS:S/.c$/.o/:S/.cpp$/.o/:S/.s$/.o/:S/.S$/.o/}
 MAN = ../doc/man/man1/dyld.1.gz \
 	../doc/man/man1/dyld_usage.1.gz \
@@ -98,8 +99,8 @@ ACFLAGS = ${COMMONFLAGS}
 CFLAGS.${file} = -fno-exceptions
 .endfor
 
-LDFLAGS = -Wl,-static -Wl,-dylinker -Wl,-fixup_chains -Wl,-data_const \
-	-Wl,-pagezero_size,0 -Wl,-image_base,0 -nodefaultlibs \
+LDFLAGS = -Wl,-static -Wl,-dylinker -Wl,-data_const \
+	-Wl,-pagezero_size,0 -Wl,-image_base,0x7fff5fc00000 -nodefaultlibs \
 	-Wl,-dylinker_install_name,/usr/lib/dyld -Wl,-dead_strip \
 	-Wl,-exported_symbol,__dyld_start  -e __dyld_start \
 	-Wl,-exported_symbols_list,${.CURDIR}/../src/dyld.exp \
@@ -107,7 +108,7 @@ LDFLAGS = -Wl,-static -Wl,-dylinker -Wl,-fixup_chains -Wl,-data_const \
 	-mmacos-version-min=${MACOS_VERSION_MIN} \
 	-L${RAVYN_SDKROOT}/usr/local/lib/dyld -lc -lpthread -lplatform \
 	-L${RAVYN_SDKROOT}/usr/lib/system -lCrashReporterClient \
-	-L${RAVYN_SDKROOT}/usr/lib -lunwind -lc++ -lc++abi \
+	-L${RAVYN_SDKROOT}/usr/lib -lunwind \
 	-L${RAVYN_SDKROOT}/usr/local/lib/kernel -lkernel
 
 .for file in ${SRCS}
@@ -129,14 +130,7 @@ all: ${LIB}
 ${LIB}: ${.OBJDIR}/${LIB}
 
 ${.OBJDIR}/${LIB}: ${OBJS}
-	${CC} -fuse-ld=${LD} -o ${.TARGET} ${OBJS:O:u} ${LDFLAGS}
-	mkdir -p ${RAVYN_SDKROOT}/usr/lib ${ROOT_BINARY_DIR}/sysroot/usr/lib
-	cp -f ${.TARGET} ${RAVYN_SDKROOT}/usr/lib/
-	cp -f ${.TARGET} ${SYSROOT_DIR}/usr/lib/
-	mkdir -p ${RAVYN_SDKROOT}${MANDIR}/man1 ${SYSROOT_DIR}${MANDIR}/man1
-.for man in ${MAN}
-	cp -f ${.CURDIR}/${man} ${RAVYN_SDKROOT}${MANDIR}/man1/
-	cp -f ${.CURDIR}/${man} ${SYSROOT_DIR}${MANDIR}/man1/
-.endfor
+	${CC} -fuse-ld=${LD} -o ${.TARGET} ${OBJS:O:u} ${LDFLAGS:N-Wl,-undefined,dynamic_lookup}
+
 
 .include <bsd.lib.mk>

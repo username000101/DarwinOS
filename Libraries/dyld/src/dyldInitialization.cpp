@@ -90,13 +90,14 @@ static void rebaseDyld(const dyld3::MachOLoaded* dyldMH)
 {
     // walk all fixups chains and rebase dyld
     const dyld3::MachOAnalyzer* ma = (dyld3::MachOAnalyzer*)dyldMH;
-    assert(ma->hasChainedFixups());
-    uintptr_t slide = (long)ma; // all fixup chain based images have a base address of zero, so slide == load address
-    __block Diagnostics diag;
-    ma->withChainStarts(diag, 0, ^(const dyld_chained_starts_in_image* starts) {
-        ma->fixupAllChainedFixups(diag, starts, slide, dyld3::Array<const void*>(), nullptr);
-    });
-    diag.assertNoError();
+    if (ma->hasChainedFixups()) {
+        uintptr_t slide = (long)ma; // all fixup chain based images have a base address of zero, so slide == load address
+        __block Diagnostics diag;
+        ma->withChainStarts(diag, 0, ^(const dyld_chained_starts_in_image* starts) {
+            ma->fixupAllChainedFixups(diag, starts, slide, dyld3::Array<const void*>(), nullptr);
+        });
+        diag.assertNoError();
+    }
 
 	// Install a tiny TSD block before any fallible syscalls hit libsyscall's
 	// cerror path, which expects GS-relative errno storage to exist.

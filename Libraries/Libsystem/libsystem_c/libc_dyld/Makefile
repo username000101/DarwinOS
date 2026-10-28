@@ -31,6 +31,7 @@ SRCS = gen/FreeBSD/arc4random.c \
 	#stdlib/FreeBSD/atexit.c 
 
 CFLAGS += -DPRIVATE -U__DARWIN_NON_CANCELABLE -D__DARWIN_NON_CANCELABLE=0 \
+	-D_FORTIFY_SOURCE=0 \
 	-DVARIANT_STATIC -DVARIANT_CANCELABLE -DVARIANT_DARWINEXTSN \
 	-I${ROOT_BINARY_DIR}/Kernel/xnu/EXPORT_HDRS/bsd \
 	-I${ROOT_SOURCE_DIR}/Kernel/xnu/libsyscall/mach \
@@ -43,10 +44,13 @@ CFLAGS += -DPRIVATE -U__DARWIN_NON_CANCELABLE -D__DARWIN_NON_CANCELABLE=0 \
 	-I${ROOT_SOURCE_DIR}/Kernel/xnu/bsd \
 	-I${ROOT_SOURCE_DIR}/Kernel/xnu/libkern \
 	-include${.CURDIR:H}/fbsdcompat/_fbsd_compat_.h \
+	-include${RAVYN_SDKROOT}/usr/include/string.h \
+	-include${RAVYN_SDKROOT}/usr/include/strings.h \
 	${CFLAGS.${.TARGET:T}}
 
 SLF = /System/Library/Frameworks
-CFLAGS.arc4random.o = -include${RAVYN_SDKROOT}/usr/include/os/availability.h \
+CFLAGS.arc4random.o = -include ${RAVYN_SDKROOT}/usr/include/string.h \
+	-include${RAVYN_SDKROOT}/usr/include/os/availability.h \
 	-I${RAVYN_SDKROOT}${SLF}/System.framework/Versions/B/PrivateHeaders
 
 CFLAGS.closedir.o = -DLIBC_ALIAS_CLOSEDIR \

@@ -551,16 +551,7 @@ static void socket_syslogv(int priority, const char* format, va_list list)
 
 void vlog(const char* format, va_list list)
 {
-#if __IPHONE_OS_VERSION_MIN_REQUIRED && !TARGET_OS_SIMULATOR
-	// <rdar://problem/25965832> log to console when running iOS app from Xcode
-	if ( !sLogToFile && !sForceStderr && useSyslog() )
-#else
-	if ( !sLogToFile && useSyslog() )
-#endif
-		socket_syslogv(LOG_ERR, format, list);
-	else {
-		_simple_vdprintf(sLogfile, format, list);
-	}
+	_simple_vdprintf(STDERR_FILENO, format, list);
 }
 
 void log(const char* format, ...)
@@ -574,8 +565,8 @@ void log(const char* format, ...)
 
 void vwarn(const char* format, va_list list) 
 {
-	_simple_dprintf(sLogfile, "dyld: warning, ");
-	_simple_vdprintf(sLogfile, format, list);
+	_simple_dprintf(STDERR_FILENO, "dyld: warning, ");
+	_simple_vdprintf(STDERR_FILENO, format, list);
 }
 
 void warn(const char* format, ...) 
@@ -1009,6 +1000,8 @@ static int imageSorter(const void* l, const void* r)
 
 static void notifyBatchPartial(dyld_image_states state, bool orLater, dyld_image_state_change_handler onlyHandler, bool preflightOnly, bool onlyObjCMappedNotification)
 {
+	dyld::log("[dyld] notifyBatchPartial ENTER: state=%d, orLater=%d, onlyHandler=%p, onlyObjC=%d, sNotifyObjCMapped=%p\n",
+		(int)state, (int)orLater, (void*)onlyHandler, (int)onlyObjCMappedNotification, (void*)sNotifyObjCMapped);
 	std::vector<dyld_image_state_change_handler>* handlers = stateToHandlers(state, sBatchHandlers);
 	if ( (handlers != NULL) || ((state == dyld_image_state_bound) && (sNotifyObjCMapped != NULL)) ) {
 		// don't use a vector because it will use malloc/free and we want notifcation to be low cost
@@ -1018,6 +1011,8 @@ static void notifyBatchPartial(dyld_image_states state, bool orLater, dyld_image
         ImageLoader** end = images;
         for (std::vector<ImageLoader*>::iterator it=sAllImages.begin(); it != sAllImages.end(); it++) {
             dyld_image_states imageState = (*it)->getState();
+            dyld::log("[dyld] notifyBatchPartial check: image=%s, state=%d (want %d, orLater=%d)\n",
+                (*it)->getPath(), (int)imageState, (int)state, (int)orLater);
             if ( (imageState == state) || (orLater && (imageState > state)) )
                 *end++ = *it;
         }
@@ -1127,6 +1122,8 @@ static void notifyBatchPartial(dyld_image_states state, bool orLater, dyld_image
 				}
 			}
 			// tell objc about new images
+			dyld::log("[dyld] notifyBatchPartial objc check: imageCount=%u, onlyHandler=%p, state=%d, bound=%d, orLater=%d, sNotifyObjCMapped=%p\n",
+				imageCount, (void*)onlyHandler, (int)state, (int)dyld_image_state_bound, (int)orLater, (void*)sNotifyObjCMapped);
 			if ( (onlyHandler == NULL) && ((state == dyld_image_state_bound) || (orLater && (dyld_image_state_bound > state))) && (sNotifyObjCMapped != NULL) ) {
 				const char* paths[imageCount];
 				const mach_header* mhs[imageCount];
@@ -1135,9 +1132,12 @@ static void notifyBatchPartial(dyld_image_states state, bool orLater, dyld_image
 					ImageLoader* image = findImageByMachHeader(infos[i].imageLoadAddress);
 					bool hasObjC = false;
 					if ( image != NULL ) {
-						if ( image->objCMappedNotified() )
-							continue;
+						bool alreadyNotified = image->objCMappedNotified();
 						hasObjC = image->notifyObjC();
+						dyld::log("[dyld]   info[%d]: %s, alreadyNotified=%d, notifyObjC=%d\n",
+							i, image->getPath(), (int)alreadyNotified, (int)hasObjC);
+						if ( alreadyNotified )
+							continue;
 					}
 #if SUPPORT_ACCELERATE_TABLES
 					else if ( sAllCacheImagesProxy != NULL ) {
@@ -1157,12 +1157,15 @@ static void notifyBatchPartial(dyld_image_states state, bool orLater, dyld_image
 							image->setObjCMappedNotified();
 					}
 				}
+				dyld::log("[dyld] notifyBatchPartial: objcImageCount=%u\n", objcImageCount);
 				if ( objcImageCount != 0 ) {
+					dyld::log("[dyld] calling (*sNotifyObjCMapped)(%u, paths, mhs)...\n", objcImageCount);
 					dyld3::ScopedTimer timer(DBG_DYLD_TIMING_OBJC_MAP, 0, 0, 0);
 					uint64_t t0 = mach_absolute_time();
 					(*sNotifyObjCMapped)(objcImageCount, paths, mhs);
 					uint64_t t1 = mach_absolute_time();
 					ImageLoader::fgTotalObjCSetupTime += (t1-t0);
+					dyld::log("[dyld] (*sNotifyObjCMapped) returned successfully!\n");
 				}
 			}
 		}
@@ -1564,6 +1567,8 @@ void initializeMainExecutable()
 {
 	// record that we've reached this step
 	gLinkContext.startedInitializingMainExecutable = true;
+	dyld::gProcessInfo->libSystemInitialized = true;
+	dyld::log("[dyld] initializeMainExecutable() running initializers...\n");
 
 	// run initialzers for any inserted dylibs
 	ImageLoader::InitializerTimingList initializerTimes[allImagesCount()];
@@ -4193,6 +4198,7 @@ const char* getErrorMessage()
 
 void halt(const char* message)
 {
+	_simple_dprintf(STDERR_FILENO, "dyld: HALT: %s\n", message);
 	if ( sSharedCacheLoadInfo.errorMessage != nullptr ) {
 		// <rdar://problem/45957449> if dyld fails with a missing dylib and there is no shared cache, display the shared cache load error message
 		dyld::log("dyld: dyld cache load error: %s\n", sSharedCacheLoadInfo.errorMessage);
@@ -4540,6 +4546,7 @@ void registerImageStateBatchChangeHandler(dyld_image_states state, dyld_image_st
 
 void registerObjCNotifiers(_dyld_objc_notify_mapped mapped, _dyld_objc_notify_init init, _dyld_objc_notify_unmapped unmapped)
 {
+	dyld::log("[dyld] registerObjCNotifiers entered! mapped=%p\n", (void*)mapped);
 	// record functions to call
 	sNotifyObjCMapped	= mapped;
 	sNotifyObjCInit		= init;
@@ -6195,6 +6202,18 @@ static ClosureMode getPlatformDefaultClosureMode() {
 #endif // __MAC_OS_X_VERSION_MIN_REQUIRED
 }
 
+#if __x86_64__
+__asm__(
+".text\n"
+".globl __dyld_default_start_glue\n"
+"__dyld_default_start_glue:\n"
+"    movl %eax, %edi\n"
+"    movl $0x2000001, %eax\n"
+"    syscall\n"
+);
+extern "C" void _dyld_default_start_glue(void);
+#endif
+
 //
 // Entry point for dyld.  The kernel loads dyld and jumps to __dyld_start which
 // sets up some registers and call this function.
@@ -6797,10 +6816,16 @@ reloadAllImages:
 			result = (uintptr_t)sMainExecutable->getEntryFromLC_MAIN();
 			if ( result != 0 ) {
 				// main executable uses LC_MAIN, we need to use helper in libdyld to call into main()
-				if ( (gLibSystemHelpers != NULL) && (gLibSystemHelpers->version >= 9) )
+				if ( (gLibSystemHelpers != NULL) && (gLibSystemHelpers->version >= 9) && (gLibSystemHelpers->startGlueToCallExit != NULL) )
 					*startGlue = (uintptr_t)gLibSystemHelpers->startGlueToCallExit;
-				else
+				else {
+#if __x86_64__
+					*startGlue = (uintptr_t)&_dyld_default_start_glue;
+#else
 					halt("libdyld.dylib support not present for LC_MAIN");
+#endif
+				}
+				dyld::log("[dyld] LC_MAIN entry=0x%lx startGlue=0x%lx\n", (unsigned long)result, (unsigned long)*startGlue);
 			}
 			else {
 				// main executable uses LC_UNIXTHREAD, dyld needs to let "start" in program set up for main()
@@ -6839,6 +6864,7 @@ reloadAllImages:
 		*startGlue = (uintptr_t)gLibSystemHelpers->startGlueToCallExit;
 	}
 	
+	dyld::log("[dyld] returning entry point result=0x%lx, jumping to program!\n", (unsigned long)result);
 	return result;
 }
 

@@ -23,6 +23,7 @@
 
 #include <platform/string.h>
 
+#undef bcopy
 void bcopy(const void *src, void *dst, size_t n) {
     _platform_memmove(dst, src, n);
 }

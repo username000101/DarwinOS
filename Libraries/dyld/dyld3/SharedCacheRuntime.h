@@ -30,6 +30,7 @@
 #include <stdint.h>
 
 #include "DyldSharedCache.h"
+#include "Closure.h"
 
 namespace dyld3 {
 
