@@ -2552,7 +2552,10 @@ static Class realizeClassWithoutSwift(Class cls, Class previously)
     // fixme verify class is not in an un-dlopened part of the shared cache?
 
     auto ro = (const class_ro_t *)cls->data();
-    auto isMeta = ro->flags & RO_META;
+    auto isMeta = ro ? (ro->flags & RO_META) : 0;
+    const char *dbg_name = (ro && ro->name) ? ro->name : "nil";
+    _objc_inform("[objc4-realize] cls=%p (%s, isMeta=%d) ro=%p ro_name=%p raw_super=%p raw_isa=%p",
+                 cls, dbg_name, (int)isMeta, ro, ro ? ro->name : NULL, cls->superclass, cls->ISA());
     if (ro->flags & RO_FUTURE) {
         // This was a future class. rw data is already allocated.
         rw = cls->data();
@@ -2592,6 +2595,8 @@ static Class realizeClassWithoutSwift(Class cls, Class previously)
     //   for ObjC subclasses of Swift classes.
     supercls = realizeClassWithoutSwift(remapClass(cls->superclass), nil);
     metacls = realizeClassWithoutSwift(remapClass(cls->ISA()), nil);
+    _objc_inform("[objc4-realize] cls=%s realized supercls=%p (%s)",
+                 dbg_name, supercls, (supercls && supercls->isRealized()) ? supercls->nameForLogging() : "nil");
 
 #if SUPPORT_NONPOINTER_ISA
     if (isMeta) {
@@ -2609,7 +2614,7 @@ static Class realizeClassWithoutSwift(Class cls, Class previously)
             // Non-pointer isa disabled by environment or app SDK version
             instancesRequireRawIsa = true;
         }
-        else if (!hackedDispatch  &&  0 == strcmp(ro->name, "OS_object"))
+        else if (!hackedDispatch  &&  ro->name  &&  0 == strcmp(ro->name, "OS_object"))
         {
             // hack for libdispatch et al - isa also acts as vtable pointer
             hackedDispatch = true;
@@ -3245,8 +3250,14 @@ bool mustReadClasses(header_info *hi, bool hasDyldRoots)
 Class readClass(Class cls, bool headerIsBundle, bool headerIsPreoptimized)
 {
     const char *mangledName = cls->mangledName();
+    if (mangledName && (strstr(mangledName, "NSAutoreleasePool") || strstr(mangledName, "NSObject"))) {
+        _objc_inform("[objc4-readClass] cls=%p (%s) raw_super=%p", cls, mangledName, cls->superclass);
+    }
     
     if (missingWeakSuperclass(cls)) {
+        if (mangledName && (strstr(mangledName, "NSAutoreleasePool") || strstr(mangledName, "NSObject"))) {
+            _objc_inform("[objc4-readClass] missingWeakSuperclass=YES for %s! IGNORING!", mangledName);
+        }
         // No superclass (probably weak-linked). 
         // Disavow any knowledge of this subclass.
         if (PrintConnecting) {

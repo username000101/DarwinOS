@@ -455,6 +455,7 @@ void
 map_images_nolock(unsigned mhCount, const char * const mhPaths[],
                   const struct mach_header * const mhdrs[])
 {
+    write(2, "[objc4] map_images_nolock entered\n", 34);
     static bool firstTime = YES;
     header_info *hList[mhCount];
     uint32_t hCount;
@@ -915,8 +916,10 @@ void _objc_atfork_child()
 * Called by libSystem BEFORE library initialization time
 **********************************************************************/
 
+__attribute__((constructor))
 void _objc_init(void)
 {
+    write(2, "[objc4] _objc_init entered\n", 27);
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
